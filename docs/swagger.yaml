@@ -24,4 +24,25 @@ info:
     | 401| The consumer does not have access to the requested resource or the provided token is not valid.
     | 404| The requested resource can not be found or the user does not have access to the resource.
     | 5XX| A server error has occurred while processing the request.
-paths: {}
+paths:
+  /widgets:
+    get:
+      tags:
+        - widgets
+      summary: Get a list of all widgets
+      description: Returns a list of all widgets in API
+      responses:
+        '200':
+          description: Returns a list of widgets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+              examples:
+                List of widgets:
+                  value:
+                    - Cizzbor
+                    - Woowo
+                    - Crazlinger
