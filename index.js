@@ -20,6 +20,18 @@ app.get('/widgets', (req, res) => {
     res.send(widgets.map(widget => widget.name))
 })
 
+app.get('/widgets/:id', (req, res) => {
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id < 1) {
+        return res.status(400).send({ error: "Widget id must be a positive integer" })
+    }
+    const widget = widgets.find(widget => widget.id === id)
+    if (!widget) {
+        return res.status(404).send({ error: "Widget not found" })
+    }
+    res.send(widget)
+})
+
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
 app.listen(port, () => {

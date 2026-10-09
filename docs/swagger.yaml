@@ -46,3 +46,74 @@ paths:
                     - Cizzbor
                     - Woowo
                     - Crazlinger
+  /widgets/{id}:
+    parameters:
+      - name: id
+        in: path
+        description: Id of the widget
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - details
+      summary: Get full details of a widget
+      description: Returns full details of a given id widget
+      responses:
+        '200':
+          description: Returns full details of a given id widget
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/widget'
+              examples:
+                Full details of a given widget:
+                  value:
+                    id: 1
+                    name: Cizzbor
+                    price: 29.99
+        '400':
+          description: Widget id is not a positive integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+              examples:
+                Invalid id:
+                  value:
+                    error: Widget id must be a positive integer
+        '404':
+          description: Widget was not found in widgets array
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+              examples:
+                Widget was not found:
+                  value:
+                    error: Widget not found
+components:
+  schemas:
+    error:
+      title: Root Type for error
+      type: object
+      properties:
+        error:
+          type: string
+      example:
+        error: Error message.
+    widget:
+      title: Root Type for widget
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        price:
+          format: float
+          type: number
+      example:
+        id: 1
+        name: Cizzbor
+        price: 29.99
