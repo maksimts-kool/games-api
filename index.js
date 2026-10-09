@@ -32,8 +32,34 @@ app.get('/widgets/:id', (req, res) => {
     res.send(widget)
 })
 
+app.post('/widgets', (req, res) => {
+    const { name, price } = req.body || {}
+    if (typeof name !== 'string' || name.trim() === '' || price === undefined || price === '') {
+        return res.status(400).send({ error: 'One or all params are missing' })
+    }
+    const priceNumber = Number(price)
+    if (!Number.isFinite(priceNumber) || priceNumber < 0) {
+        return res.status(400).send({ error: 'Price must be a number that is 0 or greater' })
+    }
+    const widget = {
+        id: Math.max(0, ...widgets.map(widget => widget.id)) + 1,
+        name: name.trim(),
+        price: priceNumber
+    }
+
+    widgets.push(widget)
+
+    res.status(201)
+        .location(`${getBaseUrl(req)}/widgets/${widget.id}`)
+        .send(widget)
+})
+
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
 app.listen(port, () => {
     console.log(`API up at: http://localhost:${port}`)
 })
+
+function getBaseUrl(req) {
+    return `${req.protocol}://${req.get('host')}`
+}

@@ -46,6 +46,49 @@ paths:
                     - Cizzbor
                     - Woowo
                     - Crazlinger
+    post:
+      tags:
+        - new-widget
+      summary: Creates a widget
+      description: Creates a new widget
+      requestBody:
+        description: A new widget to be created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/new-widget'
+      responses:
+        '201':
+          description: Widget was created. The Location header points to the new widget.
+          headers:
+            Location:
+              description: URL of the created widget
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/widget'
+              examples:
+                Created widget:
+                  value:
+                    id: 6
+                    name: Tetris
+                    price: 0.99
+        '400':
+          description: One or all params are missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+              examples:
+                Missing params:
+                  value:
+                    error: One or all params are missing
+                Invalid price:
+                  value:
+                    error: Price must be a number that is 0 or greater
   /widgets/{id}:
     parameters:
       - name: id
@@ -117,3 +160,18 @@ components:
         id: 1
         name: Cizzbor
         price: 29.99
+    new-widget:
+      title: Root Type for new-widget
+      type: object
+      required:
+        - name
+        - price
+      properties:
+        name:
+          type: string
+        price:
+          format: float
+          type: number
+      example:
+        name: Tetris
+        price: 0.99
