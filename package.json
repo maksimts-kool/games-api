@@ -1,7 +1,7 @@
 {
-  "name": "widgets-api",
+  "name": "games-api",
   "version": "1.0.0",
-  "description": "REST API for widgets (Hajusrakenduste alused, Backend)",
+  "description": "REST API for games (Hajusrakenduste alused, Backend)",
   "main": "index.js",
   "scripts": {
     "start": "node .",

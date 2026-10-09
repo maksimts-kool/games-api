@@ -13,7 +13,7 @@ Data is kept in an in-memory array, so it resets when the server restarts.
 
 ```bash
 git clone <repo-url>
-cd widgets-api
+cd games-api
 npm install
 cp .env.example .env
 ```
@@ -37,20 +37,20 @@ The API runs at `http://localhost:8080`, and the Swagger documentation is at `ht
 
 | Method | Path | Success | Errors |
 |---|---|---|---|
-| `GET` | `/widgets` | `200`, array of widget names | |
-| `GET` | `/widgets/:id` | `200`, full widget object | `400` invalid id, `404` not found |
-| `POST` | `/widgets` | `201`, created widget plus `Location` header | `400` missing or invalid params |
-| `DELETE` | `/widgets/:id` | `204` no content | `400` invalid id, `404` not found |
+| `GET` | `/games` | `200`, array of game names | |
+| `GET` | `/games/:id` | `200`, full game object | `400` invalid id, `404` not found |
+| `POST` | `/games` | `201`, created game plus `Location` header | `400` missing or invalid params |
+| `DELETE` | `/games/:id` | `204` no content | `400` invalid id, `404` not found |
 
 Errors are returned as `{ "error": "..." }`.
 
 ## Testing with xh
 
 ```bash
-xh -v localhost:8080/widgets
-xh -v localhost:8080/widgets/1
-xh -v localhost:8080/widgets name=Tetris price:=0.99
-xh -v DELETE localhost:8080/widgets/2
+xh -v localhost:8080/games
+xh -v localhost:8080/games/1
+xh -v localhost:8080/games name=Tetris price:=0.99
+xh -v DELETE localhost:8080/games/2
 ```
 
 ## Links

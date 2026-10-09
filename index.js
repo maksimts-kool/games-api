@@ -8,7 +8,7 @@ const swaggerDocument = yamljs.load('./docs/swagger.yaml')
 
 app.use(express.json())
 
-const widgets = [
+const games = [
     { id: 1, name: "Cizzbor", price: 29.99 },
     { id: 2, name: "Woowo", price: 26.99 },
     { id: 3, name: "Crazlinger", price: 59.99 },
@@ -16,23 +16,23 @@ const widgets = [
     { id: 5, name: "Blurpton", price: 0 }
 ]
 
-app.get('/widgets', (req, res) => {
-    res.send(widgets.map(widget => widget.name))
+app.get('/games', (req, res) => {
+    res.send(games.map(game => game.name))
 })
 
-app.get('/widgets/:id', (req, res) => {
+app.get('/games/:id', (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id < 1) {
-        return res.status(400).send({ error: "Widget id must be a positive integer" })
+        return res.status(400).send({ error: "Game id must be a positive integer" })
     }
-    const widget = widgets.find(widget => widget.id === id)
-    if (!widget) {
-        return res.status(404).send({ error: "Widget not found" })
+    const game = games.find(game => game.id === id)
+    if (!game) {
+        return res.status(404).send({ error: "Game not found" })
     }
-    res.send(widget)
+    res.send(game)
 })
 
-app.post('/widgets', (req, res) => {
+app.post('/games', (req, res) => {
     const { name, price } = req.body || {}
     if (typeof name !== 'string' || name.trim() === '' || price === undefined || price === '') {
         return res.status(400).send({ error: 'One or all params are missing' })
@@ -41,30 +41,30 @@ app.post('/widgets', (req, res) => {
     if (!Number.isFinite(priceNumber) || priceNumber < 0) {
         return res.status(400).send({ error: 'Price must be a number that is 0 or greater' })
     }
-    const widget = {
-        id: Math.max(0, ...widgets.map(widget => widget.id)) + 1,
+    const game = {
+        id: Math.max(0, ...games.map(game => game.id)) + 1,
         name: name.trim(),
         price: priceNumber
     }
 
-    widgets.push(widget)
+    games.push(game)
 
     res.status(201)
-        .location(`${getBaseUrl(req)}/widgets/${widget.id}`)
-        .send(widget)
+        .location(`${getBaseUrl(req)}/games/${game.id}`)
+        .send(game)
 })
 
-app.delete('/widgets/:id', (req, res) => {
+app.delete('/games/:id', (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id < 1) {
-        return res.status(400).send({ error: "Widget id must be a positive integer" })
+        return res.status(400).send({ error: "Game id must be a positive integer" })
     }
-    const index = widgets.findIndex(widget => widget.id === id)
+    const index = games.findIndex(game => game.id === id)
     if (index === -1) {
-        return res.status(404).send({ error: "Widget not found" })
+        return res.status(404).send({ error: "Game not found" })
     }
 
-    widgets.splice(index, 1)
+    games.splice(index, 1)
 
     res.status(204).send()
 })
