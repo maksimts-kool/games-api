@@ -52,3 +52,8 @@ xh -v localhost:8080/widgets/1
 xh -v localhost:8080/widgets name=Tetris price:=0.99
 xh -v DELETE localhost:8080/widgets/2
 ```
+
+## Links
+
+- GitHub: <https://github.com/maksimts-kool/widgets-api>
+- LiteTracker stories: <https://eu.litetracker.com/story/show/88852>, [#88853](https://eu.litetracker.com/story/show/88853), [#88854](https://eu.litetracker.com/story/show/88854), [#88855](https://eu.litetracker.com/story/show/88855), [#88856](https://eu.litetracker.com/story/show/88856)
