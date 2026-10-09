@@ -69,6 +69,10 @@ app.delete('/widgets/:id', (req, res) => {
     res.status(204).send()
 })
 
+app.get('/', (req, res) => {
+    res.redirect('/docs')
+})
+
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
 app.listen(port, () => {
