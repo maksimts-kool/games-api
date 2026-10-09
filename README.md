@@ -1,6 +1,6 @@
-# widgets-api
+# games-api
 
-REST API for **widgets**, built with Node.js and Express. Course: Hajusrakenduste alused (Backend).
+REST API for **games**, built with Node.js and Express. Course: Hajusrakenduste alused (Backend).
 
 Data is kept in an in-memory array, so it resets when the server restarts.
 
@@ -55,5 +55,5 @@ xh -v DELETE localhost:8080/widgets/2
 
 ## Links
 
-- GitHub: <https://github.com/maksimts-kool/widgets-api>
+- GitHub: <https://github.com/maksimts-kool/games-api>
 - LiteTracker stories: <https://eu.litetracker.com/story/show/88852>, [#88853](https://eu.litetracker.com/story/show/88853), [#88854](https://eu.litetracker.com/story/show/88854), [#88855](https://eu.litetracker.com/story/show/88855), [#88856](https://eu.litetracker.com/story/show/88856)
