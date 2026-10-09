@@ -135,6 +135,34 @@ paths:
                 Widget was not found:
                   value:
                     error: Widget not found
+    delete:
+      tags:
+        - delete-widget
+      summary: Deletes a widget
+      description: Deletes a widget with the given id
+      responses:
+        '204':
+          description: Widget was deleted
+        '400':
+          description: Widget id is not a positive integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+              examples:
+                Invalid id:
+                  value:
+                    error: Widget id must be a positive integer
+        '404':
+          description: Widget was not found in widgets array
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+              examples:
+                Widget was not found:
+                  value:
+                    error: Widget not found
 components:
   schemas:
     error:
@@ -175,3 +203,13 @@ components:
       example:
         name: Tetris
         price: 0.99
+    delete-widget:
+      title: Root Type for delete-widget
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+      example:
+        id: 1

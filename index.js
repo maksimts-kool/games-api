@@ -54,6 +54,21 @@ app.post('/widgets', (req, res) => {
         .send(widget)
 })
 
+app.delete('/widgets/:id', (req, res) => {
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id < 1) {
+        return res.status(400).send({ error: "Widget id must be a positive integer" })
+    }
+    const index = widgets.findIndex(widget => widget.id === id)
+    if (index === -1) {
+        return res.status(404).send({ error: "Widget not found" })
+    }
+
+    widgets.splice(index, 1)
+
+    res.status(204).send()
+})
+
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
 app.listen(port, () => {
