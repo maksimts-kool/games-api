@@ -41,11 +41,13 @@ The API runs at `http://localhost:8080`, and the Swagger documentation is at `ht
 |---|---|---|---|
 | `GET` | `/games` | `200`, array of full game objects | |
 | `GET` | `/games/:id` | `200`, full game object | `400` invalid id, `404` not found |
-| `POST` | `/games` | `201`, created game plus `Location` header | `400` missing or invalid params |
-| `PUT` | `/games/:id` | `200`, updated game | `401` not admin, `400` invalid id or params, `404` not found |
+| `POST` | `/games` | `201`, created game plus `Location` header | `400` missing or invalid params, `409` name already exists |
+| `PUT` | `/games/:id` | `200`, updated game | `401` not admin, `400` invalid id or params, `404` not found, `409` name already exists |
 | `DELETE` | `/games/:id` | `204` no content | `401` not admin, `400` invalid id, `404` not found |
 
 Errors are returned as `{ "error": "..." }`.
+
+Game names are unique. `POST` and `PUT` return `409` if another game already has the same name (compared case-insensitively, ignoring surrounding spaces). A `PUT` that keeps the game's own name is allowed.
 
 `PUT` and `DELETE` are admin only. They need HTTP Basic auth with `ADMIN_USERNAME` and `ADMIN_PASSWORD` from `.env`. If either is not set, these requests always return `401`.
 

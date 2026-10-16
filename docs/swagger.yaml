@@ -23,6 +23,7 @@ info:
     | 400| Bad input parameters or invalid request. More information can be found in the response body.
     | 401| The consumer does not have access to the requested resource or the provided token is not valid.
     | 404| The requested resource can not be found or the user does not have access to the resource.
+    | 409| A game with the same name already exists.
     | 5XX| A server error has occurred while processing the request.
 paths:
   /games:
@@ -56,7 +57,7 @@ paths:
       tags:
         - new-game
       summary: Creates a game
-      description: Creates a new game
+      description: Creates a new game. The name must not match an existing game (case-insensitive).
       requestBody:
         description: A new game to be created
         required: true
@@ -95,6 +96,8 @@ paths:
                 Invalid price:
                   value:
                     error: Price must be a number that is 0 or greater
+        '409':
+          $ref: '#/components/responses/name-conflict'
   /games/{id}:
     parameters:
       - name: id
@@ -145,7 +148,7 @@ paths:
       tags:
         - update-game
       summary: Updates a game
-      description: Replaces the name and price of a game with the given id. Admin only.
+      description: Replaces the name and price of a game with the given id. The name must not match another existing game (case-insensitive). Admin only.
       security:
         - adminAuth: []
       requestBody:
@@ -196,6 +199,8 @@ paths:
                 Game was not found:
                   value:
                     error: Game not found
+        '409':
+          $ref: '#/components/responses/name-conflict'
     delete:
       tags:
         - delete-game
@@ -249,6 +254,16 @@ components:
             Not admin:
               value:
                 error: Admin credentials are required
+    name-conflict:
+      description: Another game already has this name (names are compared case-insensitively)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error'
+          examples:
+            Duplicate name:
+              value:
+                error: A game with this name already exists
   schemas:
     error:
       title: Root Type for error

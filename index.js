@@ -42,6 +42,9 @@ app.post('/games', (req, res) => {
     if (!Number.isFinite(priceNumber) || priceNumber < 0) {
         return res.status(400).send({ error: 'Price must be a number that is 0 or greater' })
     }
+    if (nameTaken(name)) {
+        return res.status(409).send({ error: 'A game with this name already exists' })
+    }
     const game = {
         id: Math.max(0, ...games.map(game => game.id)) + 1,
         name: name.trim(),
@@ -71,6 +74,9 @@ app.put('/games/:id', requireAdmin, (req, res) => {
     const priceNumber = Number(price)
     if (!Number.isFinite(priceNumber) || priceNumber < 0) {
         return res.status(400).send({ error: 'Price must be a number that is 0 or greater' })
+    }
+    if (nameTaken(name, game.id)) {
+        return res.status(409).send({ error: 'A game with this name already exists' })
     }
 
     game.name = name.trim()
@@ -109,6 +115,11 @@ app.listen(port, () => {
 
 function getBaseUrl(req) {
     return `${req.protocol}://${req.get('host')}`
+}
+
+function nameTaken(name, exceptId) {
+    const normalized = name.trim().toLowerCase()
+    return games.some(game => game.id !== exceptId && game.name.toLowerCase() === normalized)
 }
 
 function requireAdmin(req, res, next) {
