@@ -8,6 +8,7 @@ const yamljs = require('yamljs')
 // API dokumentatsioon, mida näidatakse aadressil /docs
 const swaggerDocument = yamljs.load('./docs/swagger.yaml')
 const crypto = require('crypto')
+const fs = require('fs')
 
 // Võimaldab lugeda JSON-kujul päringu keha (req.body)
 app.use(express.json())
@@ -126,8 +127,40 @@ app.get('/', (req, res) => {
     res.redirect('/docs')
 })
 
-// Swagger UI dokumentatsioon
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
+// HTTP meetodid, mida iga roll tohib teha, dokumentatsioonis näidatakse ainult neid.
+// Sisse logimata kasutaja (guest) ei näe ühtegi päringut
+const allowedMethods = {
+    admin: ['get', 'post', 'put', 'delete'],
+    viewer: ['get'],
+    guest: []
+}
+const httpMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']
+
+// Tagastab dokumentatsiooni, kus on ainult antud rolli lubatud päringud
+function docsFor(role) {
+    const paths = {}
+    for (const [path, pathItem] of Object.entries(swaggerDocument.paths)) {
+        const filtered = Object.fromEntries(Object.entries(pathItem).filter(([key]) =>
+            !httpMethods.includes(key) || allowedMethods[role].includes(key)))
+        // Aadress jääb välja, kui sellel pole ühtegi lubatud päringut
+        if (Object.keys(filtered).some(key => httpMethods.includes(key))) {
+            paths[path] = filtered
+        }
+    }
+    return { ...swaggerDocument, paths }
+}
+
+// Dokumentatsioon sisse logitud kasutaja rolli järgi: viewer ei näe POST, PUT ja DELETE
+// päringuid, sisse logimata kasutaja ei näe ühtegi päringut
+app.get('/docs/swagger.json', (req, res) => {
+    const user = authenticate(req)
+    res.send(docsFor(user ? user.role : 'guest'))
+})
+
+// Swagger UI dokumentatsioon, swagger-auth.js laeb selle sisse- ja väljalogimisel uuesti
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(docsFor('guest'), {
+    customJsStr: fs.readFileSync('./docs/swagger-auth.js', 'utf8')
+}))
 
 app.listen(port, () => {
     console.log(`API up at: http://localhost:${port}`)

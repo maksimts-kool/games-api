@@ -60,6 +60,8 @@ Every request needs HTTP Basic auth as one of two users from `.env`:
 
 Missing or wrong credentials return `401`. A viewer trying `POST`, `PUT` or `DELETE` gets `403`. If a user's username or password is not set, that user can not log in.
 
+In the Swagger UI (`/docs`), after you click **Authorize**, only the endpoints your user can call are shown, so a viewer sees just the two `GET` endpoints and an admin sees all of them. When you are not logged in, no endpoints are shown.
+
 ## Testing with xh
 
 ```bash
