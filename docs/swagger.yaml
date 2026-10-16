@@ -5,6 +5,14 @@ info:
   description: |-
     ### This is a Swagger UI for our Games API
 
+    ### Users
+    Every request needs HTTP Basic auth. Click **Authorize** and log in as one of the users from `.env`.
+
+    | User | Can do |
+    |---|---|
+    | admin (`ADMIN_USERNAME` / `ADMIN_PASSWORD`) | `GET`, `POST`, `PUT`, `DELETE` |
+    | viewer (`VIEWER_USERNAME` / `VIEWER_PASSWORD`) | `GET` only |
+
 
     ### Error handling
     Errors are presented using the HTTP status codes 400-599. The response include a more detailed explanation about the error in the body.
@@ -21,7 +29,8 @@ info:
     | HTTP status  |  Description |
     |---|---|
     | 400| Bad input parameters or invalid request. More information can be found in the response body.
-    | 401| The consumer does not have access to the requested resource or the provided token is not valid.
+    | 401| Credentials are missing or wrong.
+    | 403| The user is logged in but is not allowed to do this (a viewer tried to change data).
     | 404| The requested resource can not be found or the user does not have access to the resource.
     | 409| A game with the same name already exists.
     | 5XX| A server error has occurred while processing the request.
@@ -31,7 +40,9 @@ paths:
       tags:
         - games
       summary: Get a list of all games
-      description: Returns a list of all games in API with their full details
+      description: Returns a list of all games in API with their full details. Admin and viewer.
+      security:
+        - basicAuth: []
       responses:
         '200':
           description: Returns a list of games
@@ -53,11 +64,15 @@ paths:
                     - id: 3
                       name: Crazlinger
                       price: 59.99
+        '401':
+          $ref: '#/components/responses/unauthorized'
     post:
       tags:
         - new-game
       summary: Creates a game
-      description: Creates a new game. The name must not match an existing game (case-insensitive).
+      description: Creates a new game. The name must not match an existing game (case-insensitive). Admin only.
+      security:
+        - basicAuth: []
       requestBody:
         description: A new game to be created
         required: true
@@ -96,6 +111,10 @@ paths:
                 Invalid price:
                   value:
                     error: Price must be a number that is 0 or greater
+        '401':
+          $ref: '#/components/responses/unauthorized'
+        '403':
+          $ref: '#/components/responses/forbidden'
         '409':
           $ref: '#/components/responses/name-conflict'
   /games/{id}:
@@ -110,7 +129,9 @@ paths:
       tags:
         - details
       summary: Get full details of a game
-      description: Returns full details of a given id game
+      description: Returns full details of a given id game. Admin and viewer.
+      security:
+        - basicAuth: []
       responses:
         '200':
           description: Returns full details of a given id game
@@ -134,6 +155,8 @@ paths:
                 Invalid id:
                   value:
                     error: Game id must be a positive integer
+        '401':
+          $ref: '#/components/responses/unauthorized'
         '404':
           description: Game was not found in games array
           content:
@@ -150,7 +173,7 @@ paths:
       summary: Updates a game
       description: Replaces the name and price of a game with the given id. The name must not match another existing game (case-insensitive). Admin only.
       security:
-        - adminAuth: []
+        - basicAuth: []
       requestBody:
         description: New name and price for the game
         required: true
@@ -189,6 +212,8 @@ paths:
                     error: Price must be a number that is 0 or greater
         '401':
           $ref: '#/components/responses/unauthorized'
+        '403':
+          $ref: '#/components/responses/forbidden'
         '404':
           description: Game was not found in games array
           content:
@@ -207,7 +232,7 @@ paths:
       summary: Deletes a game
       description: Deletes a game with the given id. Admin only.
       security:
-        - adminAuth: []
+        - basicAuth: []
       responses:
         '204':
           description: Game was deleted
@@ -223,6 +248,8 @@ paths:
                     error: Game id must be a positive integer
         '401':
           $ref: '#/components/responses/unauthorized'
+        '403':
+          $ref: '#/components/responses/forbidden'
         '404':
           description: Game was not found in games array
           content:
@@ -235,17 +262,23 @@ paths:
                     error: Game not found
 components:
   securitySchemes:
-    adminAuth:
+    basicAuth:
       type: http
       scheme: basic
-      description: Admin username and password from ADMIN_USERNAME and ADMIN_PASSWORD
+      description: Admin (ADMIN_USERNAME / ADMIN_PASSWORD) or viewer (VIEWER_USERNAME / VIEWER_PASSWORD) from .env
   responses:
     unauthorized:
-      description: Admin credentials are missing or wrong
-      headers:
-        WWW-Authenticate:
+      description: Credentials are missing or wrong
+      content:
+        application/json:
           schema:
-            type: string
+            $ref: '#/components/schemas/error'
+          examples:
+            Not logged in:
+              value:
+                error: Valid credentials are required
+    forbidden:
+      description: Logged in as viewer, but this needs admin
       content:
         application/json:
           schema:
@@ -253,7 +286,7 @@ components:
           examples:
             Not admin:
               value:
-                error: Admin credentials are required
+                error: Admin rights are required
     name-conflict:
       description: Another game already has this name (names are compared case-insensitively)
       content:

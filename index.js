@@ -9,6 +9,11 @@ const crypto = require('crypto')
 
 app.use(express.json())
 
+const users = [
+    { role: 'admin', username: process.env.ADMIN_USERNAME, password: process.env.ADMIN_PASSWORD },
+    { role: 'viewer', username: process.env.VIEWER_USERNAME, password: process.env.VIEWER_PASSWORD }
+]
+
 const games = [
     { id: 1, name: "Cizzbor", price: 29.99 },
     { id: 2, name: "Woowo", price: 26.99 },
@@ -17,11 +22,11 @@ const games = [
     { id: 5, name: "Blurpton", price: 0 }
 ]
 
-app.get('/games', (req, res) => {
+app.get('/games', requireRole('admin', 'viewer'), (req, res) => {
     res.send(games)
 })
 
-app.get('/games/:id', (req, res) => {
+app.get('/games/:id', requireRole('admin', 'viewer'), (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id < 1) {
         return res.status(400).send({ error: "Game id must be a positive integer" })
@@ -33,7 +38,7 @@ app.get('/games/:id', (req, res) => {
     res.send(game)
 })
 
-app.post('/games', (req, res) => {
+app.post('/games', requireRole('admin'), (req, res) => {
     const { name, price } = req.body || {}
     if (typeof name !== 'string' || name.trim() === '' || price === undefined || price === '') {
         return res.status(400).send({ error: 'One or all params are missing' })
@@ -58,7 +63,7 @@ app.post('/games', (req, res) => {
         .send(game)
 })
 
-app.put('/games/:id', requireAdmin, (req, res) => {
+app.put('/games/:id', requireRole('admin'), (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id < 1) {
         return res.status(400).send({ error: "Game id must be a positive integer" })
@@ -85,7 +90,7 @@ app.put('/games/:id', requireAdmin, (req, res) => {
     res.send(game)
 })
 
-app.delete('/games/:id', requireAdmin, (req, res) => {
+app.delete('/games/:id', requireRole('admin'), (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id < 1) {
         return res.status(400).send({ error: "Game id must be a positive integer" })
@@ -108,8 +113,10 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
 app.listen(port, () => {
     console.log(`API up at: http://localhost:${port}`)
-    if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD) {
-        console.warn('ADMIN_USERNAME or ADMIN_PASSWORD is not set, PUT and DELETE will always return 401')
+    for (const user of users) {
+        if (!user.username || !user.password) {
+            console.warn(`${user.role.toUpperCase()}_USERNAME or ${user.role.toUpperCase()}_PASSWORD is not set, the ${user.role} user can not log in`)
+        }
     }
 })
 
@@ -122,22 +129,34 @@ function nameTaken(name, exceptId) {
     return games.some(game => game.id !== exceptId && game.name.toLowerCase() === normalized)
 }
 
-function requireAdmin(req, res, next) {
-    const adminUsername = process.env.ADMIN_USERNAME
-    const adminPassword = process.env.ADMIN_PASSWORD
+function authenticate(req) {
     const [scheme, encoded] = (req.get('authorization') || '').split(' ')
-    if (adminUsername && adminPassword && scheme === 'Basic' && encoded) {
-        const decoded = Buffer.from(encoded, 'base64').toString()
-        const separator = decoded.indexOf(':')
-        const username = decoded.slice(0, separator)
-        const password = decoded.slice(separator + 1)
-        if (separator !== -1 && safeEqual(username, adminUsername) && safeEqual(password, adminPassword)) {
-            return next()
-        }
+    if (scheme !== 'Basic' || !encoded) {
+        return null
     }
-    res.status(401)
-        .set('WWW-Authenticate', 'Basic realm="games-api"')
-        .send({ error: 'Admin credentials are required' })
+    const decoded = Buffer.from(encoded, 'base64').toString()
+    const separator = decoded.indexOf(':')
+    if (separator === -1) {
+        return null
+    }
+    const username = decoded.slice(0, separator)
+    const password = decoded.slice(separator + 1)
+    return users.find(user => user.username && user.password &&
+        safeEqual(username, user.username) && safeEqual(password, user.password)) || null
+}
+
+function requireRole(...roles) {
+    return (req, res, next) => {
+        const user = authenticate(req)
+        if (!user) {
+            return res.status(401).send({ error: 'Valid credentials are required' })
+        }
+        if (!roles.includes(user.role)) {
+            return res.status(403).send({ error: 'Admin rights are required' })
+        }
+        req.user = user
+        next()
+    }
 }
 
 function safeEqual(a, b) {
