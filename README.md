@@ -39,7 +39,7 @@ The API runs at `http://localhost:8080`, and the Swagger documentation is at `ht
 
 | Method | Path | Success | Errors |
 |---|---|---|---|
-| `GET` | `/games` | `200`, array of game names | |
+| `GET` | `/games` | `200`, array of full game objects | |
 | `GET` | `/games/:id` | `200`, full game object | `400` invalid id, `404` not found |
 | `POST` | `/games` | `201`, created game plus `Location` header | `400` missing or invalid params |
 | `PUT` | `/games/:id` | `200`, updated game | `401` not admin, `400` invalid id or params, `404` not found |

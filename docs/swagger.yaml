@@ -30,7 +30,7 @@ paths:
       tags:
         - games
       summary: Get a list of all games
-      description: Returns a list of all games in API
+      description: Returns a list of all games in API with their full details
       responses:
         '200':
           description: Returns a list of games
@@ -39,13 +39,19 @@ paths:
               schema:
                 type: array
                 items:
-                  type: string
+                  $ref: '#/components/schemas/game'
               examples:
                 List of games:
                   value:
-                    - Cizzbor
-                    - Woowo
-                    - Crazlinger
+                    - id: 1
+                      name: Cizzbor
+                      price: 29.99
+                    - id: 2
+                      name: Woowo
+                      price: 26.99
+                    - id: 3
+                      name: Crazlinger
+                      price: 59.99
     post:
       tags:
         - new-game

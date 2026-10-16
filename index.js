@@ -18,7 +18,7 @@ const games = [
 ]
 
 app.get('/games', (req, res) => {
-    res.send(games.map(game => game.name))
+    res.send(games)
 })
 
 app.get('/games/:id', (req, res) => {
