@@ -5,6 +5,7 @@ const port = process.env.PORT || 8080
 const swaggerUi = require('swagger-ui-express')
 const yamljs = require('yamljs')
 const swaggerDocument = yamljs.load('./docs/swagger.yaml')
+const crypto = require('crypto')
 
 app.use(express.json())
 
@@ -54,7 +55,7 @@ app.post('/games', (req, res) => {
         .send(game)
 })
 
-app.put('/games/:id', (req, res) => {
+app.put('/games/:id', requireAdmin, (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id < 1) {
         return res.status(400).send({ error: "Game id must be a positive integer" })
@@ -78,7 +79,7 @@ app.put('/games/:id', (req, res) => {
     res.send(game)
 })
 
-app.delete('/games/:id', (req, res) => {
+app.delete('/games/:id', requireAdmin, (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id < 1) {
         return res.status(400).send({ error: "Game id must be a positive integer" })
@@ -101,8 +102,35 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
 app.listen(port, () => {
     console.log(`API up at: http://localhost:${port}`)
+    if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD) {
+        console.warn('ADMIN_USERNAME or ADMIN_PASSWORD is not set, PUT and DELETE will always return 401')
+    }
 })
 
 function getBaseUrl(req) {
     return `${req.protocol}://${req.get('host')}`
+}
+
+function requireAdmin(req, res, next) {
+    const adminUsername = process.env.ADMIN_USERNAME
+    const adminPassword = process.env.ADMIN_PASSWORD
+    const [scheme, encoded] = (req.get('authorization') || '').split(' ')
+    if (adminUsername && adminPassword && scheme === 'Basic' && encoded) {
+        const decoded = Buffer.from(encoded, 'base64').toString()
+        const separator = decoded.indexOf(':')
+        const username = decoded.slice(0, separator)
+        const password = decoded.slice(separator + 1)
+        if (separator !== -1 && safeEqual(username, adminUsername) && safeEqual(password, adminPassword)) {
+            return next()
+        }
+    }
+    res.status(401)
+        .set('WWW-Authenticate', 'Basic realm="games-api"')
+        .send({ error: 'Admin credentials are required' })
+}
+
+function safeEqual(a, b) {
+    const hashA = crypto.createHash('sha256').update(a).digest()
+    const hashB = crypto.createHash('sha256').update(b).digest()
+    return crypto.timingSafeEqual(hashA, hashB)
 }

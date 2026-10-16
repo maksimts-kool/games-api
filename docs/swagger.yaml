@@ -139,7 +139,9 @@ paths:
       tags:
         - update-game
       summary: Updates a game
-      description: Replaces the name and price of a game with the given id
+      description: Replaces the name and price of a game with the given id. Admin only.
+      security:
+        - adminAuth: []
       requestBody:
         description: New name and price for the game
         required: true
@@ -176,6 +178,8 @@ paths:
                 Invalid price:
                   value:
                     error: Price must be a number that is 0 or greater
+        '401':
+          $ref: '#/components/responses/unauthorized'
         '404':
           description: Game was not found in games array
           content:
@@ -190,7 +194,9 @@ paths:
       tags:
         - delete-game
       summary: Deletes a game
-      description: Deletes a game with the given id
+      description: Deletes a game with the given id. Admin only.
+      security:
+        - adminAuth: []
       responses:
         '204':
           description: Game was deleted
@@ -204,6 +210,8 @@ paths:
                 Invalid id:
                   value:
                     error: Game id must be a positive integer
+        '401':
+          $ref: '#/components/responses/unauthorized'
         '404':
           description: Game was not found in games array
           content:
@@ -215,6 +223,26 @@ paths:
                   value:
                     error: Game not found
 components:
+  securitySchemes:
+    adminAuth:
+      type: http
+      scheme: basic
+      description: Admin username and password from ADMIN_USERNAME and ADMIN_PASSWORD
+  responses:
+    unauthorized:
+      description: Admin credentials are missing or wrong
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/error'
+          examples:
+            Not admin:
+              value:
+                error: Admin credentials are required
   schemas:
     error:
       title: Root Type for error
