@@ -54,6 +54,30 @@ app.post('/games', (req, res) => {
         .send(game)
 })
 
+app.put('/games/:id', (req, res) => {
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id < 1) {
+        return res.status(400).send({ error: "Game id must be a positive integer" })
+    }
+    const game = games.find(game => game.id === id)
+    if (!game) {
+        return res.status(404).send({ error: "Game not found" })
+    }
+    const { name, price } = req.body || {}
+    if (typeof name !== 'string' || name.trim() === '' || price === undefined || price === '') {
+        return res.status(400).send({ error: 'One or all params are missing' })
+    }
+    const priceNumber = Number(price)
+    if (!Number.isFinite(priceNumber) || priceNumber < 0) {
+        return res.status(400).send({ error: 'Price must be a number that is 0 or greater' })
+    }
+
+    game.name = name.trim()
+    game.price = priceNumber
+
+    res.send(game)
+})
+
 app.delete('/games/:id', (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id < 1) {

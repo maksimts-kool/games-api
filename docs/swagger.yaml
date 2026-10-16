@@ -135,6 +135,57 @@ paths:
                 Game was not found:
                   value:
                     error: Game not found
+    put:
+      tags:
+        - update-game
+      summary: Updates a game
+      description: Replaces the name and price of a game with the given id
+      requestBody:
+        description: New name and price for the game
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/new-game'
+      responses:
+        '200':
+          description: Game was updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/game'
+              examples:
+                Updated game:
+                  value:
+                    id: 1
+                    name: Cizzbor Deluxe
+                    price: 34.99
+        '400':
+          description: Game id is not a positive integer, or params are missing or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+              examples:
+                Invalid id:
+                  value:
+                    error: Game id must be a positive integer
+                Missing params:
+                  value:
+                    error: One or all params are missing
+                Invalid price:
+                  value:
+                    error: Price must be a number that is 0 or greater
+        '404':
+          description: Game was not found in games array
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+              examples:
+                Game was not found:
+                  value:
+                    error: Game not found
     delete:
       tags:
         - delete-game

@@ -40,6 +40,7 @@ The API runs at `http://localhost:8080`, and the Swagger documentation is at `ht
 | `GET` | `/games` | `200`, array of game names | |
 | `GET` | `/games/:id` | `200`, full game object | `400` invalid id, `404` not found |
 | `POST` | `/games` | `201`, created game plus `Location` header | `400` missing or invalid params |
+| `PUT` | `/games/:id` | `200`, updated game | `400` invalid id or params, `404` not found |
 | `DELETE` | `/games/:id` | `204` no content | `400` invalid id, `404` not found |
 
 Errors are returned as `{ "error": "..." }`.
@@ -50,6 +51,7 @@ Errors are returned as `{ "error": "..." }`.
 xh -v localhost:8080/games
 xh -v localhost:8080/games/1
 xh -v localhost:8080/games name=Tetris price:=0.99
+xh -v PUT localhost:8080/games/1 name="Cizzbor Deluxe" price:=34.99
 xh -v DELETE localhost:8080/games/2
 ```
 
