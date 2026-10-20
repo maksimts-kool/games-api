@@ -9,6 +9,9 @@ const yamljs = require('yamljs')
 const swaggerDocument = yamljs.load('./docs/swagger.yaml')
 const crypto = require('crypto')
 const fs = require('fs')
+const mongoose = require('mongoose')
+const Game = require('./models/game')
+const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/games-api'
 
 // Võimaldab lugeda JSON-kujul päringu keha (req.body)
 app.use(express.json())
@@ -19,8 +22,8 @@ const users = [
     { role: 'viewer', username: process.env.VIEWER_USERNAME, password: process.env.VIEWER_PASSWORD }
 ]
 
-// Mängude andmed hoitakse mälus, serveri taaskäivitusel lähevad muudatused kaotsi
-const games = [
+// Mängud, mis lisatakse MongoDB-sse, kui kollektsioon on serveri käivitumisel tühi
+const seedGames = [
     { id: 1, name: "Cizzbor", price: 29.99 },
     { id: 2, name: "Woowo", price: 26.99 },
     { id: 3, name: "Crazlinger", price: 59.99 },
@@ -29,17 +32,17 @@ const games = [
 ]
 
 // Tagastab kõik mängud
-app.get('/games', requireRole('admin', 'viewer'), (req, res) => {
-    res.send(games)
+app.get('/games', requireRole('admin', 'viewer'), async (req, res) => {
+    res.send(await Game.find().sort({ id: 1 }))
 })
 
 // Tagastab ühe mängu id järgi
-app.get('/games/:id', requireRole('admin', 'viewer'), (req, res) => {
+app.get('/games/:id', requireRole('admin', 'viewer'), async (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id < 1) {
         return res.status(400).send({ error: "Game id must be a positive integer" })
     }
-    const game = games.find(game => game.id === id)
+    const game = await Game.findOne({ id })
     if (!game) {
         return res.status(404).send({ error: "Game not found" })
     }
@@ -47,7 +50,7 @@ app.get('/games/:id', requireRole('admin', 'viewer'), (req, res) => {
 })
 
 // Lisab uue mängu (ainult admin)
-app.post('/games', requireRole('admin'), (req, res) => {
+app.post('/games', requireRole('admin'), async (req, res) => {
     const { name, price } = req.body || {}
     // Nimi ja hind on kohustuslikud
     if (typeof name !== 'string' || name.trim() === '' || price === undefined || price === '') {
@@ -58,18 +61,18 @@ app.post('/games', requireRole('admin'), (req, res) => {
     if (!Number.isFinite(priceNumber) || priceNumber < 0) {
         return res.status(400).send({ error: 'Price must be a number that is 0 or greater' })
     }
-    // Sama nimega mängu ei tohi olla kaks korda
-    if (nameTaken(name)) {
-        return res.status(409).send({ error: 'A game with this name already exists' })
-    }
     // Uus id on seni suurimast id-st ühe võrra suurem
-    const game = {
-        id: Math.max(0, ...games.map(game => game.id)) + 1,
-        name: name.trim(),
-        price: priceNumber
+    const last = await Game.findOne().sort({ id: -1 })
+    let game
+    try {
+        game = await Game.create({ id: last ? last.id + 1 : 1, name: name.trim(), price: priceNumber })
+    } catch (err) {
+        // Sama nimega mängu ei tohi olla kaks korda
+        if (isDuplicateName(err)) {
+            return res.status(409).send({ error: 'A game with this name already exists' })
+        }
+        throw err
     }
-
-    games.push(game)
 
     // Location päis näitab, kust uue mängu leiab
     res.status(201)
@@ -78,12 +81,12 @@ app.post('/games', requireRole('admin'), (req, res) => {
 })
 
 // Muudab olemasoleva mängu nime ja hinda (ainult admin)
-app.put('/games/:id', requireRole('admin'), (req, res) => {
+app.put('/games/:id', requireRole('admin'), async (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id < 1) {
         return res.status(400).send({ error: "Game id must be a positive integer" })
     }
-    const game = games.find(game => game.id === id)
+    const game = await Game.findOne({ id })
     if (!game) {
         return res.status(404).send({ error: "Game not found" })
     }
@@ -95,29 +98,31 @@ app.put('/games/:id', requireRole('admin'), (req, res) => {
     if (!Number.isFinite(priceNumber) || priceNumber < 0) {
         return res.status(400).send({ error: 'Price must be a number that is 0 or greater' })
     }
-    // Muudetav mäng ise ei lähe nime kontrollis arvesse
-    if (nameTaken(name, game.id)) {
-        return res.status(409).send({ error: 'A game with this name already exists' })
-    }
-
     game.name = name.trim()
     game.price = priceNumber
+    try {
+        await game.save()
+    } catch (err) {
+        // Teisel mängul on juba sama nimi (oma nime jätmine on lubatud)
+        if (isDuplicateName(err)) {
+            return res.status(409).send({ error: 'A game with this name already exists' })
+        }
+        throw err
+    }
 
     res.send(game)
 })
 
 // Kustutab mängu id järgi (ainult admin)
-app.delete('/games/:id', requireRole('admin'), (req, res) => {
+app.delete('/games/:id', requireRole('admin'), async (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isInteger(id) || id < 1) {
         return res.status(400).send({ error: "Game id must be a positive integer" })
     }
-    const index = games.findIndex(game => game.id === id)
-    if (index === -1) {
+    const game = await Game.findOneAndDelete({ id })
+    if (!game) {
         return res.status(404).send({ error: "Game not found" })
     }
-
-    games.splice(index, 1)
 
     res.status(204).send()
 })
@@ -162,25 +167,46 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(docsFor('guest'), {
     customJsStr: fs.readFileSync('./docs/swagger-auth.js', 'utf8')
 }))
 
-app.listen(port, () => {
-    console.log(`API up at: http://localhost:${port}`)
-    // Hoiatame, kui mõne kasutaja nimi või parool on .env failis puudu
-    for (const user of users) {
-        if (!user.username || !user.password) {
-            console.warn(`${user.role.toUpperCase()}_USERNAME or ${user.role.toUpperCase()}_PASSWORD is not set, the ${user.role} user can not log in`)
-        }
-    }
+// Andmebaasi viga vms, vastus tuleb samuti { error } kujul
+app.use((err, req, res, next) => {
+    console.error(err)
+    res.status(500).send({ error: 'Internal server error' })
 })
+
+// Server käivitub alles siis, kui MongoDB ühendus on olemas
+start().catch(err => {
+    console.error(`Could not connect to MongoDB at ${mongoUri}:`, err.message)
+    process.exit(1)
+})
+
+async function start() {
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 })
+    // Loob unikaalsed indeksid (id ja nimi), kui neid veel pole
+    await Game.syncIndexes()
+    if (await Game.countDocuments() === 0) {
+        await Game.insertMany(seedGames)
+        console.log(`Database was empty, added ${seedGames.length} games`)
+    }
+    app.listen(port, () => {
+        console.log(`API up at: http://localhost:${port}`)
+        // Hoiatame, kui mõne kasutaja nimi või parool on .env failis puudu
+        for (const user of users) {
+            if (!user.username || !user.password) {
+                console.warn(`${user.role.toUpperCase()}_USERNAME or ${user.role.toUpperCase()}_PASSWORD is not set, the ${user.role} user can not log in`)
+            }
+        }
+    })
+}
 
 // Tagastab serveri aadressi, nt http://localhost:8080
 function getBaseUrl(req) {
     return `${req.protocol}://${req.get('host')}`
 }
 
-// Kontrollib, kas sama nimega mäng on juba olemas (suur- ja väiketähti ei eristata)
-function nameTaken(name, exceptId) {
-    const normalized = name.trim().toLowerCase()
-    return games.some(game => game.id !== exceptId && game.name.toLowerCase() === normalized)
+// Kas MongoDB keeldus salvestamast, sest sama nimega mäng on juba olemas
+// (unikaalne indeks, suur- ja väiketähti ei eristata)
+function isDuplicateName(err) {
+    return err.code === 11000 && Boolean(err.keyPattern && err.keyPattern.name)
 }
 
 // Loeb Authorization päisest Basic auth kasutajanime ja parooli

@@ -1,12 +1,13 @@
 # games-api
 
-REST API for **games**, built with Node.js and Express. Course: Hajusrakenduste alused (Backend).
+REST API for **games**, built with Node.js, Express and MongoDB (via Mongoose). Course: Hajusrakenduste alused (Backend).
 
-Data is kept in an in-memory array, so it resets when the server restarts.
+Games are stored in a MongoDB database, so changes survive server restarts. If the `games` collection is empty when the server starts, it is filled with 5 starter games.
 
 ## Requirements
 
 - [Node.js](https://nodejs.org/) 18 or newer
+- [MongoDB Community](https://www.mongodb.com/docs/manual/administration/install-community/) running locally (on macOS: `brew tap mongodb/brew && brew install mongodb-community && brew services start mongodb-community`)
 - Optional: [xh](https://github.com/ducaale/xh) for testing requests from the terminal
 
 ## Setup
@@ -23,6 +24,7 @@ cp .env.example .env
 | Variable | Default | Meaning |
 |---|---|---|
 | `PORT` | `8080` | Port the API listens on |
+| `MONGODB_URI` | `mongodb://127.0.0.1:27017/games-api` | MongoDB connection string |
 | `ADMIN_USERNAME` | | Admin username, can `GET`, `POST`, `PUT` and `DELETE` |
 | `ADMIN_PASSWORD` | | Admin password |
 | `VIEWER_USERNAME` | | Viewer username, can only `GET` |
@@ -35,7 +37,7 @@ npm start      # node .
 npm run dev    # nodemon ., restarts on file changes
 ```
 
-The API runs at `http://localhost:8080`, and the Swagger documentation is at `http://localhost:8080/docs`.
+The server connects to MongoDB first and exits with an error if it can't reach it within 5 seconds. The API runs at `http://localhost:8080`, and the Swagger documentation is at `http://localhost:8080/docs`.
 
 ## Endpoints
 
@@ -47,9 +49,9 @@ The API runs at `http://localhost:8080`, and the Swagger documentation is at `ht
 | `PUT` | `/games/:id` | `200`, updated game | `401` not logged in, `403` not admin, `400` invalid id or params, `404` not found, `409` name already exists |
 | `DELETE` | `/games/:id` | `204` no content | `401` not logged in, `403` not admin, `400` invalid id, `404` not found |
 
-Errors are returned as `{ "error": "..." }`.
+Errors are returned as `{ "error": "..." }`. Unexpected server or database errors return `500`.
 
-Game names are unique. `POST` and `PUT` return `409` if another game already has the same name (compared case-insensitively, ignoring surrounding spaces). A `PUT` that keeps the game's own name is allowed.
+Game names are unique. `POST` and `PUT` return `409` if another game already has the same name (compared case-insensitively, ignoring surrounding spaces). A `PUT` that keeps the game's own name is allowed. This is enforced by a case-insensitive unique index on `name` in MongoDB.
 
 Every request needs HTTP Basic auth as one of two users from `.env`:
 
