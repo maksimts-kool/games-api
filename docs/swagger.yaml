@@ -6,12 +6,12 @@ info:
     ### This is a Swagger UI for our Games API
 
     ### Users
-    Every request needs HTTP Basic auth. Click **Authorize** and log in as one of the users from `.env`.
+    Every request needs HTTP Basic auth. Click **Authorize** and log in as a user stored in the MongoDB `users` collection. On first start the collection is filled with the admin and viewer from `.env`.
 
-    | User | Can do |
+    | Role | Can do |
     |---|---|
-    | admin (`ADMIN_USERNAME` / `ADMIN_PASSWORD`) | `GET`, `POST`, `PUT`, `DELETE` |
-    | viewer (`VIEWER_USERNAME` / `VIEWER_PASSWORD`) | `GET` only |
+    | admin (first one from `ADMIN_USERNAME` / `ADMIN_PASSWORD`) | `GET`, `POST`, `PUT`, `DELETE` |
+    | viewer (first one from `VIEWER_USERNAME` / `VIEWER_PASSWORD`) | `GET` only |
 
 
     ### Error handling
@@ -265,7 +265,7 @@ components:
     basicAuth:
       type: http
       scheme: basic
-      description: Admin (ADMIN_USERNAME / ADMIN_PASSWORD) or viewer (VIEWER_USERNAME / VIEWER_PASSWORD) from .env
+      description: A user from the MongoDB users collection (admin or viewer role)
   responses:
     unauthorized:
       description: Credentials are missing or wrong

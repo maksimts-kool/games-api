@@ -1,4 +1,4 @@
-// Laeme .env failist keskkonnamuutujad (PORT, kasutajanimed, paroolid)
+// Laeme .env failist keskkonnamuutujad (PORT, MongoDB aadress, algsed kasutajad)
 require('dotenv').config({ quiet: true })
 const express = require('express')
 const app = express()
@@ -7,17 +7,18 @@ const swaggerUi = require('swagger-ui-express')
 const yamljs = require('yamljs')
 // API dokumentatsioon, mida näidatakse aadressil /docs
 const swaggerDocument = yamljs.load('./docs/swagger.yaml')
-const crypto = require('crypto')
 const fs = require('fs')
 const mongoose = require('mongoose')
 const Game = require('./models/game')
+const User = require('./models/user')
 const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/games-api'
 
 // Võimaldab lugeda JSON-kujul päringu keha (req.body)
 app.use(express.json())
 
-// Kasutajad: admin tohib kõike, viewer ainult lugeda (GET)
-const users = [
+// Kasutajad, mis lisatakse MongoDB-sse, kui kollektsioon on serveri käivitumisel tühi.
+// Admin tohib kõike, viewer ainult lugeda (GET)
+const seedUsers = [
     { role: 'admin', username: process.env.ADMIN_USERNAME, password: process.env.ADMIN_PASSWORD },
     { role: 'viewer', username: process.env.VIEWER_USERNAME, password: process.env.VIEWER_PASSWORD }
 ]
@@ -141,6 +142,9 @@ const allowedMethods = {
 }
 const httpMethods = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace']
 
+// Räsi, millega võrreldakse parooli, kui sellist kasutajat pole olemas
+const dummyHash = '00000000000000000000000000000000:' + '00'.repeat(64)
+
 // Tagastab dokumentatsiooni, kus on ainult antud rolli lubatud päringud
 function docsFor(role) {
     const paths = {}
@@ -157,8 +161,8 @@ function docsFor(role) {
 
 // Dokumentatsioon sisse logitud kasutaja rolli järgi: viewer ei näe POST, PUT ja DELETE
 // päringuid, sisse logimata kasutaja ei näe ühtegi päringut
-app.get('/docs/swagger.json', (req, res) => {
-    const user = authenticate(req)
+app.get('/docs/swagger.json', async (req, res) => {
+    const user = await authenticate(req)
     res.send(docsFor(user ? user.role : 'guest'))
 })
 
@@ -181,21 +185,36 @@ start().catch(err => {
 
 async function start() {
     await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 })
-    // Loob unikaalsed indeksid (id ja nimi), kui neid veel pole
+    // Loob unikaalsed indeksid (mängu id ja nimi, kasutajanimi), kui neid veel pole
     await Game.syncIndexes()
+    await User.syncIndexes()
     if (await Game.countDocuments() === 0) {
         await Game.insertMany(seedGames)
         console.log(`Database was empty, added ${seedGames.length} games`)
     }
+    if (await User.countDocuments() === 0) {
+        await addSeedUsers()
+    }
     app.listen(port, () => {
         console.log(`API up at: http://localhost:${port}`)
-        // Hoiatame, kui mõne kasutaja nimi või parool on .env failis puudu
-        for (const user of users) {
-            if (!user.username || !user.password) {
-                console.warn(`${user.role.toUpperCase()}_USERNAME or ${user.role.toUpperCase()}_PASSWORD is not set, the ${user.role} user can not log in`)
-            }
-        }
     })
+}
+
+// Lisab .env failist admin ja viewer kasutaja, paroolid salvestatakse räsina
+async function addSeedUsers() {
+    for (const user of seedUsers) {
+        // Hoiatame, kui mõne kasutaja nimi või parool on .env failis puudu
+        if (!user.username || !user.password) {
+            console.warn(`${user.role.toUpperCase()}_USERNAME or ${user.role.toUpperCase()}_PASSWORD is not set, the ${user.role} user was not added`)
+            continue
+        }
+        await User.create({
+            username: user.username,
+            passwordHash: await User.hashPassword(user.password),
+            role: user.role
+        })
+        console.log(`Users collection was empty, added ${user.role} user "${user.username}"`)
+    }
 }
 
 // Tagastab serveri aadressi, nt http://localhost:8080
@@ -210,8 +229,8 @@ function isDuplicateName(err) {
 }
 
 // Loeb Authorization päisest Basic auth kasutajanime ja parooli
-// ning tagastab sobiva kasutaja või null
-function authenticate(req) {
+// ning tagastab MongoDB-st sobiva kasutaja või null
+async function authenticate(req) {
     const [scheme, encoded] = (req.get('authorization') || '').split(' ')
     if (scheme !== 'Basic' || !encoded) {
         return null
@@ -224,15 +243,18 @@ function authenticate(req) {
     }
     const username = decoded.slice(0, separator)
     const password = decoded.slice(separator + 1)
-    return users.find(user => user.username && user.password &&
-        safeEqual(username, user.username) && safeEqual(password, user.password)) || null
+    const user = await User.findOne({ username })
+    // Kui kasutajat pole, kontrollime parooli ikkagi, et vastuse aja järgi ei saaks
+    // aru, kas selline kasutajanimi on olemas
+    const valid = await User.checkPassword(password, user ? user.passwordHash : dummyHash)
+    return user && valid ? user : null
 }
 
 // Vahevara, mis lubab edasi ainult antud rollidega kasutajad
 // 401 - sisselogimine puudub või vale, 403 - pole piisavalt õigusi
 function requireRole(...roles) {
-    return (req, res, next) => {
-        const user = authenticate(req)
+    return async (req, res, next) => {
+        const user = await authenticate(req)
         if (!user) {
             return res.status(401).send({ error: 'Valid credentials are required' })
         }
@@ -242,11 +264,4 @@ function requireRole(...roles) {
         req.user = user
         next()
     }
-}
-
-// Võrdleb stringe konstantse ajaga, et ajastusrünnakuga ei saaks parooli ära arvata
-function safeEqual(a, b) {
-    const hashA = crypto.createHash('sha256').update(a).digest()
-    const hashB = crypto.createHash('sha256').update(b).digest()
-    return crypto.timingSafeEqual(hashA, hashB)
 }

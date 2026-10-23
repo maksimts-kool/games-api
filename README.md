@@ -2,7 +2,7 @@
 
 REST API for **games**, built with Node.js, Express and MongoDB (via Mongoose). Course: Hajusrakenduste alused (Backend).
 
-Games are stored in a MongoDB database, so changes survive server restarts. If the `games` collection is empty when the server starts, it is filled with 5 starter games.
+Games and users are stored in a MongoDB database, so changes survive server restarts. If the `games` collection is empty when the server starts, it is filled with 5 starter games. If the `users` collection is empty, it gets the admin and viewer user from `.env`.
 
 ## Requirements
 
@@ -25,10 +25,12 @@ cp .env.example .env
 |---|---|---|
 | `PORT` | `8080` | Port the API listens on |
 | `MONGODB_URI` | `mongodb://127.0.0.1:27017/games-api` | MongoDB connection string |
-| `ADMIN_USERNAME` | | Admin username, can `GET`, `POST`, `PUT` and `DELETE` |
-| `ADMIN_PASSWORD` | | Admin password |
-| `VIEWER_USERNAME` | | Viewer username, can only `GET` |
-| `VIEWER_PASSWORD` | | Viewer password |
+| `ADMIN_USERNAME` | | Starter admin username, can `GET`, `POST`, `PUT` and `DELETE` |
+| `ADMIN_PASSWORD` | | Starter admin password |
+| `VIEWER_USERNAME` | | Starter viewer username, can only `GET` |
+| `VIEWER_PASSWORD` | | Starter viewer password |
+
+The four user variables are only read when the `users` collection is empty. After that, the users live in MongoDB and changing `.env` has no effect. To reset them, drop the collection (`mongosh games-api --eval 'db.users.drop()'`) and restart the server.
 
 ## Running
 
@@ -53,14 +55,14 @@ Errors are returned as `{ "error": "..." }`. Unexpected server or database error
 
 Game names are unique. `POST` and `PUT` return `409` if another game already has the same name (compared case-insensitively, ignoring surrounding spaces). A `PUT` that keeps the game's own name is allowed. This is enforced by a case-insensitive unique index on `name` in MongoDB.
 
-Every request needs HTTP Basic auth as one of two users from `.env`:
+Every request needs HTTP Basic auth as a user from the MongoDB `users` collection. Each user has a unique `username`, a `role` and a `passwordHash`; passwords are never stored in plain text, only as a salted scrypt hash.
 
-| User | Credentials | Can do |
+| Role | Starter user | Can do |
 |---|---|---|
 | admin | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | `GET`, `POST`, `PUT`, `DELETE` |
 | viewer | `VIEWER_USERNAME` / `VIEWER_PASSWORD` | `GET` only |
 
-Missing or wrong credentials return `401`. A viewer trying `POST`, `PUT` or `DELETE` gets `403`. If a user's username or password is not set, that user can not log in.
+Missing or wrong credentials return `401`. A viewer trying `POST`, `PUT` or `DELETE` gets `403`. If a starter user's username or password is not set when the collection is filled, that user is skipped and the server prints a warning.
 
 In the Swagger UI (`/docs`), after you click **Authorize**, only the endpoints your user can call are shown, so a viewer sees just the two `GET` endpoints and an admin sees all of them. When you are not logged in, no endpoints are shown.
 
